@@ -3,6 +3,8 @@ package com.example.clockview
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Rect
+import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
 import androidx.core.content.ContextCompat
@@ -16,6 +18,7 @@ class ClockView @JvmOverloads constructor(
 ) : View(context, attributeSet, defStyle) {
 
     private val boarderAndDotOffset = dip(8).toFloat()
+    private val dotAndNumberOffset = dip(12).toFloat()
 
     private val boarderWidth = dip(8)
     private val boarderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -35,10 +38,12 @@ class ClockView @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
 
-    private val numberPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val numberPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ContextCompat.getColor(context, R.color.clock_view_number)
         style = Paint.Style.FILL
+        textSize = 72f
     }
+    private val numberRect = Rect()
 
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ContextCompat.getColor(context, R.color.clock_view_dot)
@@ -80,9 +85,8 @@ class ClockView @JvmOverloads constructor(
 
         drawBoarder(canvas)
         drawDial(canvas)
-        //drawDots(canvas)
-        //drawNumber(canvas)
-        //drawHands(canvas)
+        drawDotsAndNumbers(canvas)
+        // drawHands(canvas)
     }
 
     private fun drawBoarder(canvas: Canvas) {
@@ -113,31 +117,57 @@ class ClockView @JvmOverloads constructor(
         canvas.restore()
     }
 
-    private fun drawDots(canvas: Canvas) {
+    private fun drawDotsAndNumbers(canvas: Canvas) {
         canvas.save()
         val dx = measuredWidth / 2f
         val dy = measuredHeight / 2f
         canvas.translate(
             dx,
-            0f
+            dy
         )
-        for (i in 0 until 60) {
-            canvas.drawCircle(
-                0f,
-                0f,
-                if (i % 5 == 0) hourDotRadius else minuteDotRadius,
-                dotPaint
-            )
+        for (i in 1..60) {
             canvas.rotate(6f, 0f, 0f)
+            if (i % 5 == 0) {
+                val dotCx = 0f
+                val dotCy = -dy + boarderWidth + boarderAndDotOffset
+                canvas.drawCircle(
+                    dotCx,
+                    dotCy,
+                    hourDotRadius,
+                    dotPaint
+                )
+                drawNumber(canvas, i, dotCx, dotCy)
+            } else {
+                canvas.drawCircle(
+                    0f,
+                    -dy + boarderWidth + boarderAndDotOffset,
+                    minuteDotRadius,
+                    dotPaint
+                )
+            }
         }
         canvas.restore()
     }
 
-    private fun drawNumber(canvas: Canvas) {
-
+    private fun drawHands(canvas: Canvas) {
+        // todo
     }
 
-    private fun drawHands(canvas: Canvas) {
-
+    private fun drawNumber(canvas: Canvas, i: Int, dotCx: Float, dotCy: Float) {
+        canvas.save()
+        val number = (i / 5).toString()
+        numberPaint.getTextBounds(number, 0, number.length, numberRect)
+        canvas.translate(
+            dotCx,
+            dotCy + dotAndNumberOffset + numberRect.height() / 2
+        )
+        canvas.rotate(-6f * i)
+        canvas.drawText(
+            number,
+            numberRect.width() / -2f,
+            numberRect.height() / 2f,
+            numberPaint
+        )
+        canvas.restore()
     }
 }
