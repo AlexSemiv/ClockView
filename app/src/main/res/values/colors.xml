@@ -7,4 +7,9 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <color name="clock_view_dot">#000000</color>
+    <color name="clock_view_boarder">#000000</color>
+    <color name="clock_view_dial">#C5C5C5</color>
+    <color name="clock_view_number">#000000</color>
 </resources>

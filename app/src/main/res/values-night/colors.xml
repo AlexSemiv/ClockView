@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="clock_view_dot">#000000</color>
+    <color name="clock_view_boarder">#000000</color>
+    <color name="clock_view_dial">#A39797</color>
+    <color name="clock_view_number">#000000</color>
+</resources>
