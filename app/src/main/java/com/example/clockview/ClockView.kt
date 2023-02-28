@@ -1,5 +1,6 @@
 package com.example.clockview
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -8,6 +9,9 @@ import android.graphics.Rect
 import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
+import android.view.animation.LinearInterpolator
+import androidx.core.animation.doOnCancel
+import androidx.core.animation.doOnRepeat
 import androidx.core.content.ContextCompat
 import com.example.clockview.Utils.dip
 import java.util.*
@@ -20,13 +24,38 @@ class ClockView @JvmOverloads constructor(
 ) : View(context, attributeSet, defStyle) {
 
     private val calendar = Calendar.getInstance()
-
     private val secondAngle: Float
         get() = calendar[Calendar.SECOND] * 360 / 60f
     private val minuteAngle: Float
         get() = (calendar[Calendar.MINUTE] + calendar[Calendar.SECOND] / 60f) * 360 / 60f
     private val hourAngle: Float
         get() = (calendar[Calendar.HOUR] + calendar[Calendar.MINUTE] / 60f) * 360 / 12f
+
+    private var lastSecondAngle = secondAngle
+    private var secondProgress = 0f
+    private val oneSecondAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+        val timeMillis = 1000L
+        interpolator = LinearInterpolator()
+        duration = timeMillis
+        repeatCount = ValueAnimator.INFINITE
+        addUpdateListener { animator ->
+            val secondAngle = secondAngle
+            val value = animator.animatedValue as Float
+            secondProgress = value
+            if (lastSecondAngle == secondAngle) {
+                invalidate()
+            } else {
+                lastSecondAngle = secondAngle
+            }
+        }
+        doOnRepeat {
+            calendar.add(Calendar.MILLISECOND, timeMillis.toInt())
+        }
+        doOnCancel {
+            secondProgress = 0f
+            invalidate()
+        }
+    }
 
     private val boarderAndDotOffset = dip(8).toFloat()
     private val dotAndNumberOffset = dip(12).toFloat()
@@ -103,6 +132,19 @@ class ClockView @JvmOverloads constructor(
         drawDial(canvas)
         drawDotsAndNumbers(canvas)
         drawHands(canvas)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        val timeMillis = calendar[Calendar.MILLISECOND]
+        val timeSeconds = calendar[Calendar.SECOND]
+        secondProgress = (timeMillis - timeSeconds * 1000f)
+        oneSecondAnimator.start()
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        oneSecondAnimator.cancel()
     }
 
     private fun drawBoarder(canvas: Canvas) {
@@ -192,15 +234,20 @@ class ClockView @JvmOverloads constructor(
             centerToNumberOffset / 10f,
             handPaint
         )
-        canvas.rotate(secondAngle - minuteAngle - hourAngle)
-        val secondHandBottomWidth = minuteDotRadius * 1.25f
+        val secondProgressAngle = secondAngle + 6f * secondProgress
+        canvas.rotate(secondProgressAngle - minuteAngle - hourAngle)
+        val secondHandBottomWidth = minuteDotRadius * 1.5f
         secondHandPath.reset()
         secondHandPath.moveTo(
             -secondHandBottomWidth / 2f,
             centerToNumberOffset / 10f
         )
         secondHandPath.lineTo(
-            0f,
+            -secondHandBottomWidth / 6f,
+            -centerToNumberOffset / 1.25f
+        )
+        secondHandPath.lineTo(
+            secondHandBottomWidth / 6f,
             -centerToNumberOffset / 1.25f
         )
         secondHandPath.lineTo(
