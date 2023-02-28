@@ -6,6 +6,8 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
+import android.os.Bundle
+import android.os.Parcelable
 import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
@@ -23,7 +25,7 @@ class ClockView @JvmOverloads constructor(
     defStyle: Int = 0
 ) : View(context, attributeSet, defStyle) {
 
-    private val calendar = Calendar.getInstance()
+    private var calendar = Calendar.getInstance()
     private val secondAngle: Float
         get() = calendar[Calendar.SECOND] * 360 / 60f
     private val minuteAngle: Float
@@ -134,17 +136,33 @@ class ClockView @JvmOverloads constructor(
         drawHands(canvas)
     }
 
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        val timeMillis = calendar[Calendar.MILLISECOND]
-        val timeSeconds = calendar[Calendar.SECOND]
-        secondProgress = (timeMillis - timeSeconds * 1000f)
-        oneSecondAnimator.start()
+    override fun onVisibilityAggregated(isVisible: Boolean) {
+        super.onVisibilityAggregated(isVisible)
+        if (isVisible) {
+            calendar = Calendar.getInstance()
+            val timeMillis = calendar[Calendar.MILLISECOND]
+            secondProgress = timeMillis / 1000f
+            oneSecondAnimator.start()
+        } else {
+            if (oneSecondAnimator.isRunning) oneSecondAnimator.cancel()
+        }
     }
 
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        oneSecondAnimator.cancel()
+    override fun onSaveInstanceState(): Parcelable {
+        return Bundle(2).apply {
+            putFloat(LAST_SECOND_ANGLE, lastSecondAngle)
+            putParcelable(SUPER_STATE, super.onSaveInstanceState())
+        }
+    }
+
+    override fun onRestoreInstanceState(state: Parcelable?) {
+        val superState = if (state is Bundle) {
+            lastSecondAngle = state.getFloat(LAST_SECOND_ANGLE)
+            state.getParcelable(SUPER_STATE)
+        } else {
+            state
+        }
+        super.onRestoreInstanceState(superState)
     }
 
     private fun drawBoarder(canvas: Canvas) {
@@ -278,5 +296,10 @@ class ClockView @JvmOverloads constructor(
             numberPaint
         )
         canvas.restore()
+    }
+
+    companion object {
+        private const val LAST_SECOND_ANGLE = "LAST_SECOND_ANGLE"
+        private const val SUPER_STATE = "SUPER_STATE"
     }
 }
