@@ -3,12 +3,14 @@ package com.example.clockview
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Rect
 import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.example.clockview.Utils.dip
+import java.util.*
 import kotlin.math.min
 
 class ClockView @JvmOverloads constructor(
@@ -16,6 +18,15 @@ class ClockView @JvmOverloads constructor(
     attributeSet: AttributeSet,
     defStyle: Int = 0
 ) : View(context, attributeSet, defStyle) {
+
+    private val calendar = Calendar.getInstance()
+
+    private val secondAngle: Float
+        get() = calendar[Calendar.SECOND] * 360 / 60f
+    private val minuteAngle: Float
+        get() = (calendar[Calendar.MINUTE] + calendar[Calendar.SECOND] / 60f) * 360 / 60f
+    private val hourAngle: Float
+        get() = (calendar[Calendar.HOUR] + calendar[Calendar.MINUTE] / 60f) * 360 / 12f
 
     private val boarderAndDotOffset = dip(8).toFloat()
     private val dotAndNumberOffset = dip(12).toFloat()
@@ -53,7 +64,12 @@ class ClockView @JvmOverloads constructor(
     private val minuteDotRadius = dip(2).toFloat()
     private val hourDotRadius = dip(4).toFloat()
 
-    // hands..
+    private val handPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = ContextCompat.getColor(context, R.color.clock_view_hand)
+        style = Paint.Style.FILL
+    }
+
+    private val secondHandPath = Path()
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val widthMeasureMode = MeasureSpec.getMode(widthMeasureSpec)
@@ -86,7 +102,7 @@ class ClockView @JvmOverloads constructor(
         drawBoarder(canvas)
         drawDial(canvas)
         drawDotsAndNumbers(canvas)
-        // drawHands(canvas)
+        drawHands(canvas)
     }
 
     private fun drawBoarder(canvas: Canvas) {
@@ -127,9 +143,9 @@ class ClockView @JvmOverloads constructor(
         )
         for (i in 1..60) {
             canvas.rotate(6f, 0f, 0f)
+            val dotCx = 0f
+            val dotCy = -dy + boarderWidth + boarderAndDotOffset
             if (i % 5 == 0) {
-                val dotCx = 0f
-                val dotCy = -dy + boarderWidth + boarderAndDotOffset
                 canvas.drawCircle(
                     dotCx,
                     dotCy,
@@ -139,8 +155,8 @@ class ClockView @JvmOverloads constructor(
                 drawNumber(canvas, i, dotCx, dotCy)
             } else {
                 canvas.drawCircle(
-                    0f,
-                    -dy + boarderWidth + boarderAndDotOffset,
+                    dotCx,
+                    dotCy,
                     minuteDotRadius,
                     dotPaint
                 )
@@ -150,7 +166,53 @@ class ClockView @JvmOverloads constructor(
     }
 
     private fun drawHands(canvas: Canvas) {
-        // todo
+        canvas.save()
+        val dx = measuredWidth / 2f
+        val dy = measuredHeight / 2f
+        canvas.translate(
+            dx,
+            dy
+        )
+        val centerToNumberOffset = dy - boarderWidth - boarderAndDotOffset - hourDotRadius - dotAndNumberOffset
+        canvas.rotate(hourAngle)
+        val hourHandWidth = hourDotRadius * 1.5f
+        canvas.drawRect(
+            -hourHandWidth / 2f,
+            -centerToNumberOffset / 1.75f,
+            hourHandWidth / 2f,
+            centerToNumberOffset / 10f,
+            handPaint
+        )
+        canvas.rotate(minuteAngle - hourAngle)
+        val minuteHandWidth = minuteDotRadius * 1.5f
+        canvas.drawRect(
+            -minuteHandWidth / 2f,
+            -centerToNumberOffset / 1.5f,
+            minuteHandWidth / 2f,
+            centerToNumberOffset / 10f,
+            handPaint
+        )
+        canvas.rotate(secondAngle - minuteAngle - hourAngle)
+        val secondHandBottomWidth = minuteDotRadius * 1.25f
+        secondHandPath.reset()
+        secondHandPath.moveTo(
+            -secondHandBottomWidth / 2f,
+            centerToNumberOffset / 10f
+        )
+        secondHandPath.lineTo(
+            0f,
+            -centerToNumberOffset / 1.25f
+        )
+        secondHandPath.lineTo(
+            secondHandBottomWidth / 2f,
+            centerToNumberOffset / 10f
+        )
+        secondHandPath.close()
+        canvas.drawPath(
+            secondHandPath,
+            handPaint
+        )
+        canvas.restore()
     }
 
     private fun drawNumber(canvas: Canvas, i: Int, dotCx: Float, dotCy: Float) {
