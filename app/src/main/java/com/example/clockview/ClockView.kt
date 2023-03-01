@@ -207,35 +207,40 @@ class ClockView @JvmOverloads constructor(
             val dotCx = 0f
             val dotCy = -radius + boarderWidth + boarderAndDotOffset
             if (i % 5 == 0) {
-                canvas.drawCircle(
-                    dotCx,
-                    dotCy,
-                    hourDotRadius,
-                    dotPaint
-                )
-                canvas.save()
-                val number = (i / 5).toString()
+                drawDot(canvas, hourDotRadius, dotCx, dotCy)
                 val numberCx = dotCx
                 val numberCy = dotCy + dotAndNumberOffset + numberRect.height() / 2
-                numberPaint.getTextBounds(number, 0, number.length, numberRect)
-                canvas.translate(numberCx, numberCy)
-                canvas.rotate(-6f * i)
-                canvas.drawText(
-                    number,
-                    numberRect.width() / -2f,
-                    numberRect.height() / 2f,
-                    numberPaint
-                )
-                canvas.restore()
+                drawNumber(canvas, i, numberCx, numberCy)
             } else {
-                canvas.drawCircle(
-                    dotCx,
-                    dotCy,
-                    minuteDotRadius,
-                    dotPaint
-                )
+                drawDot(canvas, minuteDotRadius, dotCx, dotCy)
             }
         }
+        canvas.restore()
+    }
+
+    private fun drawDot(canvas: Canvas, radius: Float, dotCx: Float, dotCy: Float) {
+        canvas.save()
+        canvas.drawCircle(
+            dotCx,
+            dotCy,
+            radius,
+            dotPaint
+        )
+        canvas.restore()
+    }
+
+    private fun drawNumber(canvas: Canvas, index: Int, numberCx: Float, numberCy: Float) {
+        canvas.save()
+        val number = (index / 5).toString()
+        numberPaint.getTextBounds(number, 0, number.length, numberRect)
+        canvas.translate(numberCx, numberCy)
+        canvas.rotate(-6f * index)
+        canvas.drawText(
+            number,
+            numberRect.width() / -2f,
+            numberRect.height() / 2f,
+            numberPaint
+        )
         canvas.restore()
     }
 
