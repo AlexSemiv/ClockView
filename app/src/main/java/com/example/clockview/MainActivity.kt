@@ -14,6 +14,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<LinearLayout>(R.id.container)?.let { container ->
             container.addView(
                 ClockView(this).apply {
+                    id = R.id.clock1
                     setDialColor(
                         ContextCompat.getColor(
                             this@MainActivity,
