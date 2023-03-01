@@ -12,10 +12,12 @@ import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
+import androidx.annotation.ColorInt
 import androidx.core.animation.doOnCancel
 import androidx.core.animation.doOnRepeat
 import androidx.core.content.ContextCompat
 import com.example.clockview.Utils.dip
+import com.example.clockview.Utils.sp
 import java.util.*
 import kotlin.math.cos
 import kotlin.math.min
@@ -25,9 +27,10 @@ import kotlin.math.sqrt
 
 class ClockView @JvmOverloads constructor(
     context: Context,
-    attributeSet: AttributeSet,
-    defStyle: Int = 0
-) : View(context, attributeSet, defStyle) {
+    attributeSet: AttributeSet? = null,
+    defStyleAttr: Int = 0,
+    defStyleRes: Int = 0
+) : View(context, attributeSet, defStyleAttr, defStyleRes) {
 
     private var calendar = Calendar.getInstance()
     private val secondAngle: Float
@@ -39,7 +42,7 @@ class ClockView @JvmOverloads constructor(
 
     private var lastSecondAngle = secondAngle
     private var secondProgress = 0f
-    private val oneSecondAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+    private val secondProgressAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
         val timeMillis = 1000L
         interpolator = LinearInterpolator()
         duration = timeMillis
@@ -63,10 +66,14 @@ class ClockView @JvmOverloads constructor(
         }
     }
 
-    private val boarderAndDotOffset = dip(8).toFloat()
-    private val dotAndNumberOffset = dip(12).toFloat()
+    var boarderAndDotOffset = dip(8).toFloat()
+    var dotAndNumberOffset = dip(12).toFloat()
 
-    private val boarderWidth = dip(8)
+    private var boarderWidth = dip(8)
+
+    var minuteDotRadius = dip(2).toFloat()
+    var hourDotRadius = dip(4).toFloat()
+
     private val boarderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ContextCompat.getColor(
             context,
@@ -87,23 +94,101 @@ class ClockView @JvmOverloads constructor(
     private val numberPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ContextCompat.getColor(context, R.color.clock_view_number)
         style = Paint.Style.FILL
-        textSize = 72f
+        textSize = sp(28).toFloat()
     }
-    private val numberRect = Rect()
 
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ContextCompat.getColor(context, R.color.clock_view_dot)
         style = Paint.Style.FILL
     }
 
-    private val minuteDotRadius = dip(2).toFloat()
-    private val hourDotRadius = dip(4).toFloat()
-
     private val handPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ContextCompat.getColor(context, R.color.clock_view_hand)
         style = Paint.Style.FILL
     }
 
+    init {
+        context.theme.obtainStyledAttributes(
+            attributeSet,
+            R.styleable.ClockView,
+            defStyleAttr,
+            defStyleRes
+        ).apply {
+            try {
+                boarderAndDotOffset = getDimension(
+                    R.styleable.ClockView_boarderAndDotOffset,
+                    dip(8).toFloat()
+                )
+                dotAndNumberOffset = getDimension(
+                    R.styleable.ClockView_dotAndNumberOffset,
+                    dip(12).toFloat()
+                )
+                val boarderWidth = getDimension(
+                    R.styleable.ClockView_boarderWidth,
+                    dip(8).toFloat()
+                ).toInt()
+                setBoarderWidth(boarderWidth)
+                minuteDotRadius = getDimension(
+                    R.styleable.ClockView_minuteDotRadius,
+                    dip(2).toFloat()
+                )
+                hourDotRadius = getDimension(
+                    R.styleable.ClockView_hourDotRadius,
+                    dip(4).toFloat()
+                )
+                val boarderColor = getColor(
+                    R.styleable.ClockView_boarderColor,
+                    ContextCompat.getColor(
+                        context,
+                        R.color.clock_view_boarder
+                    )
+                )
+                setBoarderColor(boarderColor)
+                val dialColor = getColor(
+                    R.styleable.ClockView_dialColor,
+                    ContextCompat.getColor(
+                        context,
+                        R.color.clock_view_dial
+                    )
+                )
+                setDialColor(dialColor)
+                val numberColor = getColor(
+                    R.styleable.ClockView_numberColor,
+                    ContextCompat.getColor(
+                        context,
+                        R.color.clock_view_number
+                    )
+                )
+                setNumberColor(numberColor)
+                val numberSize = getDimension(
+                    R.styleable.ClockView_numberSize,
+                    sp(28).toFloat()
+                )
+                setNumberSize(numberSize)
+                val dotColor = getColor(
+                    R.styleable.ClockView_dotColor,
+                    ContextCompat.getColor(
+                        context,
+                        R.color.clock_view_dot
+                    )
+                )
+                setDotColor(dotColor)
+                val handColor = getColor(
+                    R.styleable.ClockView_handColor,
+                    ContextCompat.getColor(
+                        context,
+                        R.color.clock_view_hand
+                    )
+                )
+                setHandColor(handColor)
+            } catch (_: Exception) {
+            } finally {
+                recycle()
+            }
+        }
+    }
+
+    private val numberRect = Rect()
     private val secondHandPath = Path()
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -146,9 +231,9 @@ class ClockView @JvmOverloads constructor(
             calendar = Calendar.getInstance()
             val timeMillis = calendar[Calendar.MILLISECOND]
             secondProgress = timeMillis / 1000f
-            oneSecondAnimator.start()
+            secondProgressAnimator.start()
         } else {
-            if (oneSecondAnimator.isRunning) oneSecondAnimator.cancel()
+            if (secondProgressAnimator.isRunning) secondProgressAnimator.cancel()
         }
     }
 
@@ -229,12 +314,12 @@ class ClockView @JvmOverloads constructor(
         canvas.restore()
     }
 
-    private fun drawNumber(canvas: Canvas, index: Int, numberCx: Float, numberCy: Float) {
+    private fun drawNumber(canvas: Canvas, value: Int, numberCx: Float, numberCy: Float) {
         canvas.save()
-        val number = (index / 5).toString()
+        val number = (value / 5).toString()
         numberPaint.getTextBounds(number, 0, number.length, numberRect)
         canvas.translate(numberCx, numberCy)
-        canvas.rotate(-6f * index)
+        canvas.rotate(-6f * value)
         canvas.drawText(
             number,
             numberRect.width() / -2f,
@@ -344,6 +429,35 @@ class ClockView @JvmOverloads constructor(
             val bigAxisAlpha = rotateAngle % 180
             ellipseRadius(bigAxisAlpha, secondSemiAxis, firstSemiAxis)
         }
+    }
+
+    fun setBoarderColor(@ColorInt color: Int) {
+        boarderPaint.color = color
+    }
+
+    fun setBoarderWidth(width: Int) {
+        boarderWidth = width
+        boarderPaint.strokeWidth = width.toFloat()
+    }
+
+    fun setDialColor(@ColorInt color: Int) {
+        dialPaint.color = color
+    }
+
+    fun setNumberColor(@ColorInt color: Int) {
+        numberPaint.color = color
+    }
+
+    fun setNumberSize(sizePixel: Float) {
+        numberPaint.textSize = sizePixel
+    }
+
+    fun setDotColor(@ColorInt color: Int) {
+        dotPaint.color = color
+    }
+
+    fun setHandColor(@ColorInt color: Int) {
+        handPaint.color = color
     }
 
     companion object {

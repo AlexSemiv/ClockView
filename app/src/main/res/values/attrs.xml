@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="ClockView">
+        <attr name="boarderAndDotOffset" format="dimension"/>
+        <attr name="dotAndNumberOffset" format="dimension"/>
+        <attr name="boarderWidth" format="dimension"/>
+        <attr name="minuteDotRadius" format="dimension"/>
+        <attr name="hourDotRadius" format="dimension"/>
+        <attr name="boarderColor" format="color"/>
+        <attr name="dialColor" format="color"/>
+        <attr name="numberColor" format="color"/>
+        <attr name="numberSize" format="dimension"/>
+        <attr name="dotColor" format="color"/>
+        <attr name="handColor" format="color"/>
+    </declare-styleable>
+</resources>
