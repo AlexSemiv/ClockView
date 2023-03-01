@@ -17,7 +17,11 @@ import androidx.core.animation.doOnRepeat
 import androidx.core.content.ContextCompat
 import com.example.clockview.Utils.dip
 import java.util.*
+import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 class ClockView @JvmOverloads constructor(
     context: Context,
@@ -109,22 +113,20 @@ class ClockView @JvmOverloads constructor(
         val heightMeasureSize = MeasureSpec.getSize(heightMeasureSpec)
 
         val preferWidth = dip(250) + boarderWidth
-        val calculateWidth = when (widthMeasureMode) {
+        val finalWidth = when (widthMeasureMode) {
             MeasureSpec.EXACTLY -> widthMeasureSize
             MeasureSpec.AT_MOST -> min(preferWidth, widthMeasureSize)
             else -> preferWidth
         }
 
         val preferHeight = dip(250) + boarderWidth
-        val calculateHeight = when (heightMeasureMode) {
+        val finalHeight = when (heightMeasureMode) {
             MeasureSpec.EXACTLY -> heightMeasureSize
             MeasureSpec.AT_MOST -> min(preferHeight, heightMeasureSize)
             else -> preferHeight
         }
 
-        // часы по идее должны быть всегда "кругом", а не "овалом"
-        val finalSize = min(calculateWidth, calculateHeight)
-        setMeasuredDimension(finalSize, finalSize)
+        setMeasuredDimension(finalWidth, finalHeight)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -132,8 +134,10 @@ class ClockView @JvmOverloads constructor(
 
         drawBoarder(canvas)
         drawDial(canvas)
-        drawDotsAndNumbers(canvas)
-        drawHands(canvas)
+        val cx = measuredWidth / 2f
+        val cy = measuredHeight / 2f
+        drawDotsAndNumbers(canvas, cx, cy)
+        drawHands(canvas, cx, cy)
     }
 
     override fun onVisibilityAggregated(isVisible: Boolean) {
@@ -167,13 +171,12 @@ class ClockView @JvmOverloads constructor(
 
     private fun drawBoarder(canvas: Canvas) {
         canvas.save()
-        val cx = measuredWidth / 2f
-        val cy = measuredHeight / 2f
-        val radius = cx - boarderWidth / 2f
-        canvas.drawCircle(
-            cx,
-            cy,
-            radius,
+        val boarderWidthPart = boarderWidth / 2f
+        canvas.drawOval(
+            boarderWidthPart,
+            boarderWidthPart,
+            measuredWidth.toFloat() - boarderWidthPart,
+            measuredHeight.toFloat() - boarderWidthPart,
             boarderPaint
         )
         canvas.restore()
@@ -181,30 +184,28 @@ class ClockView @JvmOverloads constructor(
 
     private fun drawDial(canvas: Canvas) {
         canvas.save()
-        val cx = measuredWidth / 2f
-        val cy = measuredHeight / 2f
-        val radius = cx - boarderWidth
-        canvas.drawCircle(
-            cx,
-            cy,
-            radius,
+        canvas.drawOval(
+            boarderWidth.toFloat(),
+            boarderWidth.toFloat(),
+            measuredWidth.toFloat() - boarderWidth,
+            measuredHeight.toFloat() - boarderWidth,
             dialPaint
         )
         canvas.restore()
     }
 
-    private fun drawDotsAndNumbers(canvas: Canvas) {
+    private fun drawDotsAndNumbers(canvas: Canvas, cx: Float, cy: Float) {
         canvas.save()
-        val dx = measuredWidth / 2f
-        val dy = measuredHeight / 2f
-        canvas.translate(
-            dx,
-            dy
-        )
+        canvas.translate(cx, cy)
         for (i in 1..60) {
-            canvas.rotate(6f, 0f, 0f)
+            // по идее здесь должен быть поворот не на 6 градусов,
+            // а на градус, полученный при вычислении равных сегментов эллипса,
+            // для того чтобы равномерно распределять числа по циферблату
+            // но это трудно сделать без сложных вычислений
+            canvas.rotate(6f)
+            val radius = calculateRadius(6f * i, cx, cy)
             val dotCx = 0f
-            val dotCy = -dy + boarderWidth + boarderAndDotOffset
+            val dotCy = -radius + boarderWidth + boarderAndDotOffset
             if (i % 5 == 0) {
                 canvas.drawCircle(
                     dotCx,
@@ -212,7 +213,20 @@ class ClockView @JvmOverloads constructor(
                     hourDotRadius,
                     dotPaint
                 )
-                drawNumber(canvas, i, dotCx, dotCy)
+                canvas.save()
+                val number = (i / 5).toString()
+                val numberCx = dotCx
+                val numberCy = dotCy + dotAndNumberOffset + numberRect.height() / 2
+                numberPaint.getTextBounds(number, 0, number.length, numberRect)
+                canvas.translate(numberCx, numberCy)
+                canvas.rotate(-6f * i)
+                canvas.drawText(
+                    number,
+                    numberRect.width() / -2f,
+                    numberRect.height() / 2f,
+                    numberPaint
+                )
+                canvas.restore()
             } else {
                 canvas.drawCircle(
                     dotCx,
@@ -225,15 +239,20 @@ class ClockView @JvmOverloads constructor(
         canvas.restore()
     }
 
-    private fun drawHands(canvas: Canvas) {
+    private fun drawHands(canvas: Canvas, cx: Float, cy: Float) {
         canvas.save()
-        val dx = measuredWidth / 2f
-        val dy = measuredHeight / 2f
-        canvas.translate(
-            dx,
-            dy
-        )
-        val centerToNumberOffset = dy - boarderWidth - boarderAndDotOffset - hourDotRadius - dotAndNumberOffset
+        canvas.translate(cx, cy)
+        drawHourHand(canvas, cx, cy)
+        drawMinuteHand(canvas, cx, cy)
+        drawSecondHand(canvas, cx, cy)
+        canvas.restore()
+    }
+
+    private fun drawHourHand(canvas: Canvas, cx: Float, cy: Float) {
+        canvas.save()
+        val hourAngle = hourAngle
+        val hourHandRadius = calculateRadius(hourAngle, cx, cy)
+        val centerToNumberOffset = hourHandRadius - boarderWidth - boarderAndDotOffset - hourDotRadius - dotAndNumberOffset
         canvas.rotate(hourAngle)
         val hourHandWidth = hourDotRadius * 1.5f
         canvas.drawRect(
@@ -243,7 +262,15 @@ class ClockView @JvmOverloads constructor(
             centerToNumberOffset / 10f,
             handPaint
         )
-        canvas.rotate(minuteAngle - hourAngle)
+        canvas.restore()
+    }
+
+    private fun drawMinuteHand(canvas: Canvas, cx: Float, cy: Float) {
+        canvas.save()
+        val minuteAngle = minuteAngle
+        val minuteHandRadius = calculateRadius(minuteAngle, cx, cy)
+        val centerToNumberOffset = minuteHandRadius - boarderWidth - boarderAndDotOffset - hourDotRadius - dotAndNumberOffset
+        canvas.rotate(minuteAngle)
         val minuteHandWidth = minuteDotRadius * 1.5f
         canvas.drawRect(
             -minuteHandWidth / 2f,
@@ -252,8 +279,15 @@ class ClockView @JvmOverloads constructor(
             centerToNumberOffset / 10f,
             handPaint
         )
-        val secondProgressAngle = secondAngle + 6f * secondProgress
-        canvas.rotate(secondProgressAngle - minuteAngle - hourAngle)
+        canvas.restore()
+    }
+
+    private fun drawSecondHand(canvas: Canvas, cx: Float, cy: Float) {
+        canvas.save()
+        val secondAngle = secondAngle + 6f * secondProgress
+        val secondHandRadius = calculateRadius(secondAngle, cx, cy)
+        val centerToNumberOffset = secondHandRadius - boarderWidth - boarderAndDotOffset - hourDotRadius - dotAndNumberOffset
+        canvas.rotate(secondAngle)
         val secondHandBottomWidth = minuteDotRadius * 1.5f
         secondHandPath.reset()
         secondHandPath.moveTo(
@@ -280,22 +314,31 @@ class ClockView @JvmOverloads constructor(
         canvas.restore()
     }
 
-    private fun drawNumber(canvas: Canvas, i: Int, dotCx: Float, dotCy: Float) {
-        canvas.save()
-        val number = (i / 5).toString()
-        numberPaint.getTextBounds(number, 0, number.length, numberRect)
-        canvas.translate(
-            dotCx,
-            dotCy + dotAndNumberOffset + numberRect.height() / 2
-        )
-        canvas.rotate(-6f * i)
-        canvas.drawText(
-            number,
-            numberRect.width() / -2f,
-            numberRect.height() / 2f,
-            numberPaint
-        )
-        canvas.restore()
+    /**
+     * https://ru.onlinemschool.com/math/formula/ellipse
+     */
+    private fun ellipseRadius(
+        bigAxisAlpha: Float,
+        bigSemiAxis: Float,
+        smallSemiAxis: Float
+    ): Float {
+        val alpha = Math.toRadians(bigAxisAlpha.toDouble()).toFloat()
+        return (bigSemiAxis * smallSemiAxis) /
+                sqrt(bigSemiAxis.pow(2) * sin(alpha).pow(2) + smallSemiAxis.pow(2) * cos(alpha).pow(2))
+    }
+
+    private fun calculateRadius(
+        rotateAngle: Float,
+        firstSemiAxis: Float,
+        secondSemiAxis: Float
+    ): Float {
+        return if (firstSemiAxis > secondSemiAxis) {
+            val bigAxisAlpha = (90 - rotateAngle) % 180
+            ellipseRadius(bigAxisAlpha, firstSemiAxis, secondSemiAxis)
+        } else {
+            val bigAxisAlpha = rotateAngle % 180
+            ellipseRadius(bigAxisAlpha, secondSemiAxis, firstSemiAxis)
+        }
     }
 
     companion object {
