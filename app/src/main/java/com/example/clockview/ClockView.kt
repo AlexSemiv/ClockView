@@ -293,9 +293,7 @@ class ClockView @JvmOverloads constructor(
             val dotCy = -radius + boarderWidth + boarderAndDotOffset
             if (i % 5 == 0) {
                 drawDot(canvas, hourDotRadius, dotCx, dotCy)
-                val numberCx = dotCx
-                val numberCy = dotCy + dotAndNumberOffset + numberRect.height() / 2
-                drawNumber(canvas, i, numberCx, numberCy)
+                drawNumber(canvas, i, dotCx, dotCy)
             } else {
                 drawDot(canvas, minuteDotRadius, dotCx, dotCy)
             }
@@ -303,7 +301,12 @@ class ClockView @JvmOverloads constructor(
         canvas.restore()
     }
 
-    private fun drawDot(canvas: Canvas, radius: Float, dotCx: Float, dotCy: Float) {
+    private fun drawDot(
+        canvas: Canvas,
+        radius: Float,
+        dotCx: Float,
+        dotCy: Float
+    ) {
         canvas.save()
         canvas.drawCircle(
             dotCx,
@@ -314,10 +317,17 @@ class ClockView @JvmOverloads constructor(
         canvas.restore()
     }
 
-    private fun drawNumber(canvas: Canvas, value: Int, numberCx: Float, numberCy: Float) {
-        canvas.save()
+    private fun drawNumber(
+        canvas: Canvas,
+        value: Int,
+        correspondingDotCx: Float,
+        correspondingDotCy: Float
+    ) {
         val number = (value / 5).toString()
         numberPaint.getTextBounds(number, 0, number.length, numberRect)
+        val numberCx = correspondingDotCx
+        val numberCy = correspondingDotCy + dotAndNumberOffset + numberRect.height() / 2
+        canvas.save()
         canvas.translate(numberCx, numberCy)
         canvas.rotate(-6f * value)
         canvas.drawText(
