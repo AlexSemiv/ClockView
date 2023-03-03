@@ -5,6 +5,8 @@ import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
+import androidx.core.view.setPadding
+import com.example.clockview.Utils.dip
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,6 +29,7 @@ class MainActivity : AppCompatActivity() {
                             R.color.clock_view_boarder
                         )
                     )
+                    setPadding(dip(12))
                 },
                 0,
                 ViewGroup.LayoutParams(

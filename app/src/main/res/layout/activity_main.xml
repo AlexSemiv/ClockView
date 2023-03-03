@@ -16,7 +16,9 @@
         <com.example.clockview.ClockView
             android:id="@+id/clock2"
             android:layout_width="match_parent"
-            android:layout_height="250dp"
+            android:layout_height="wrap_content"
+            android:paddingStart="30dp"
+            android:paddingEnd="30dp"
             app:boarderColor="@color/purple_700"
             app:dialColor="@color/purple_200"
             app:dotColor="@color/purple_500"
@@ -25,12 +27,14 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:numberColor="@color/purple_500"
-            app:numberSize="36sp" />
+            app:numberSize="32sp" />
 
         <com.example.clockview.ClockView
             android:id="@+id/clock3"
             android:layout_width="wrap_content"
             android:layout_height="400dp"
+            android:layout_margin="20dp"
+            android:padding="20dp"
             app:boarderColor="@color/teal_200"
             app:boarderWidth="16dp"
             app:dotColor="@color/teal_700"
