@@ -13,7 +13,6 @@ import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
 import androidx.annotation.ColorInt
-import androidx.core.animation.doOnCancel
 import androidx.core.animation.doOnRepeat
 import androidx.core.content.ContextCompat
 import com.example.clockview.Utils.dip
@@ -234,7 +233,8 @@ class ClockView @JvmOverloads constructor(
     }
 
     override fun onSaveInstanceState(): Parcelable {
-        return Bundle(2).apply {
+        return Bundle(3).apply {
+            putFloat(SECOND_PROGRESS, secondProgress)
             putFloat(LAST_SECOND_ANGLE, lastSecondAngle)
             putParcelable(SUPER_STATE, super.onSaveInstanceState())
         }
@@ -242,6 +242,7 @@ class ClockView @JvmOverloads constructor(
 
     override fun onRestoreInstanceState(state: Parcelable?) {
         val superState = if (state is Bundle) {
+            secondProgress = state.getFloat(SECOND_PROGRESS)
             lastSecondAngle = state.getFloat(LAST_SECOND_ANGLE)
             state.getParcelable(SUPER_STATE)
         } else {
@@ -476,6 +477,7 @@ class ClockView @JvmOverloads constructor(
 
     companion object {
         private const val LAST_SECOND_ANGLE = "LAST_SECOND_ANGLE"
+        private const val SECOND_PROGRESS = "SECOND_PROGRESS"
         private const val SUPER_STATE = "SUPER_STATE"
     }
 }
